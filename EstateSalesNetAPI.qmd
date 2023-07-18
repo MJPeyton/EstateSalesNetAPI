@@ -1,0 +1,70 @@
+---
+title: "EstateSalesAPITest"
+format: html
+---
+
+## API Documentation
+
+https://www.estatesales.net/api/sale-details
+
+```{r}
+
+library(tidyverse)
+library(httr)
+library(glue)
+library(tidygeocoder)#install.packages('tidygeocoder')
+
+address <- "946 N Lombard Ave Oak Park, IL"
+
+geoCode <- geo(address, method = 'osm', lat = latitude , long = longitude)
+
+lat <- geoCode$latitude
+
+lon <- geoCode$longitude
+    
+distance <- 10
+
+query <- 
+    GET(
+        url = glue("https://www.estatesales.net/api/sale-details?bypass=bycoordinatesanddistance:{lat}_{lon}_{distance}&include=saleschedule&select=id,url,address,stateCode,cityName,postalCodeNumber,primaryMetroAreaId,latitude,longitude,utcOffset,observesDaylightSavingTime,type,isMarketplaceSale,isLocallyFeatured,isRegionallyFeaturedThisWeek,isNationallyFeaturedThisWeek,firstUtcStartDate,firstLocalStartDate,lastUtcEndDate,lastLocalEndDate,activeLocalStartDate,tomorrowActiveLocalStartDate,utcDateFirstPublished,utcShowAddressAfter,orgPackageType,saleSchedule&explicitTypes=DateTime"))
+
+response <- content(query)
+
+responseTable <- list()
+
+for (i in 1:length(response)) {
+    
+    temp <- 
+        data.frame(
+            id = response[[i]]$id,
+            listedAdddress = ifelse(is.null(response[[i]]$address), "NULL", response[[i]]$address),
+            lat = response[[i]]$latitude,
+            lon = response[[i]]$longitude,
+            type = response[[i]]$typeName,
+            start = response[[i]]$firstUtcStartDate$`_value`,
+            end = response[[i]]$lastUtcEndDate$`_value`,
+            published = response[[i]]$utcDateFirstPublished$`_value`,
+            showAddress = ifelse(is.null(response[[i]]$utcShowAddressAfter$`_value`), "NULL", response[[i]]$utcShowAddressAfter$`_value`),
+            package = response[[i]]$orgPackageTypeName,
+            url = response[[i]]$url
+            )
+    
+    responseTable[[i]] <- temp
+   
+}
+
+responseOutput <-
+    responseTable |> 
+    bind_rows() |> 
+    print()
+
+```
+
+```{r}
+
+responseOutputCoded <- reverse_geocode(responseOutput, lat = "lat", long = "lon")
+    
+responseOutputCoded
+
+```
+
